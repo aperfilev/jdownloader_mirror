@@ -54,7 +54,6 @@ import jd.config.SubConfiguration;
 import jd.controlling.accountchecker.AccountCheckerThread;
 import jd.controlling.captcha.CaptchaSettings;
 import jd.controlling.captcha.SkipException;
-import jd.controlling.captcha.SkipRequest;
 import jd.controlling.downloadcontroller.AccountCache.ACCOUNTTYPE;
 import jd.controlling.downloadcontroller.DiskSpaceManager.DISKSPACERESERVATIONRESULT;
 import jd.controlling.downloadcontroller.DiskSpaceReservation;
@@ -86,6 +85,7 @@ import jd.http.URLConnectionAdapter;
 import jd.nutils.Formatter;
 import jd.nutils.JDHash;
 import jd.plugins.Account.AccountError;
+import jd.plugins.CaptchaException.CaptchaRefreshException;
 import jd.plugins.CaptchaType.CAPTCHA_TYPE;
 import jd.plugins.DownloadLink.AvailableStatus;
 import jd.plugins.MultiHostHost.MultihosterHostStatus;
@@ -147,7 +147,6 @@ import org.jdownloader.captcha.v2.ChallengeResponseController;
 import org.jdownloader.captcha.v2.challenge.multiclickcaptcha.MultiClickCaptchaChallenge;
 import org.jdownloader.captcha.v2.challenge.multiclickcaptcha.MultiClickedPoint;
 import org.jdownloader.captcha.v2.challenge.stringcaptcha.BasicCaptchaChallenge;
-import org.jdownloader.captcha.v2.challenge.stringcaptcha.ImageCaptchaChallenge;
 import org.jdownloader.captcha.v2.solverjob.SolverJob;
 import org.jdownloader.controlling.DefaultDownloadLinkViewImpl;
 import org.jdownloader.controlling.DownloadLinkView;
@@ -214,9 +213,9 @@ public abstract class PluginForHost extends Plugin {
          * point)
          */
         // multipart rar archives
-        Pattern.compile("(.*)(\\.pa?r?t?\\.?[0-9]+.*?\\.rar$)", Pattern.CASE_INSENSITIVE),
-        // normal files with extension
-        Pattern.compile("(.*)(\\..*?$)", Pattern.CASE_INSENSITIVE) };
+            Pattern.compile("(.*)(\\.pa?r?t?\\.?[0-9]+.*?\\.rar$)", Pattern.CASE_INSENSITIVE),
+            // normal files with extension
+            Pattern.compile("(.*)(\\..*?$)", Pattern.CASE_INSENSITIVE) };
     private LazyHostPlugin         lazyP          = null;
     /**
      * Is true if the user has answered a captcha challenge. Does not say anything whether or not the answer was correct.
@@ -580,35 +579,32 @@ public abstract class PluginForHost extends Plugin {
         return copy;
     }
 
-    @Deprecated
-    protected boolean isAccountLoginCaptchaChallenge(final DownloadLink link, final Challenge<?> c) {
-        return isAccountLoginCaptchaChallenge(c) || link == null || FilePackage.isDefaultFilePackage(link.getFilePackage());
-    }
-
-    protected <ReturnType> ReturnType handleSkipException(final DownloadLink link, Challenge<ReturnType> c, SkipException e) throws PluginException, CaptchaException, InterruptedException {
+    protected <ReturnType> ReturnType handleSkipException(final DownloadLink link, SkipException e) throws PluginException, CaptchaException, InterruptedException {
         LogSource.exception(logger, e);
-        if (link != null && !c.isAccountLogin()) {
+        final Challenge<?> c = e.getChallenge();
+        if (!isAccountLoginCaptchaChallenge(c)) {
             switch (e.getSkipRequest()) {
             case BLOCK_ALL_CAPTCHAS:
-                CaptchaBlackList.getInstance().add(new BlockAllDownloadCaptchasEntry());
+                CaptchaBlackList.getInstance().add(new BlockAllDownloadCaptchasEntry(e));
                 HelpDialog.showCaptchaSkippedDialog();
-                break;
+                throw new CaptchaException(e);
             case BLOCK_HOSTER:
-                CaptchaBlackList.getInstance().add(new BlockDownloadCaptchasByHost(link.getHost()));
+                CaptchaBlackList.getInstance().add(new BlockDownloadCaptchasByHost(e, link.getHost()));
                 HelpDialog.showCaptchaSkippedDialog();
-                break;
+                throw new CaptchaException(e);
             case BLOCK_PACKAGE:
-                CaptchaBlackList.getInstance().add(new BlockDownloadCaptchasByPackage(link.getParentNode()));
+                CaptchaBlackList.getInstance().add(new BlockDownloadCaptchasByPackage(e, link.getParentNode()));
                 HelpDialog.showCaptchaSkippedDialog();
-                break;
+                throw new CaptchaException(e);
             case TIMEOUT:
-                onCaptchaTimeout(link, c);
+                onCaptchaTimeout(link, e);
                 // TIMEOUT may fallthrough to SINGLE
             case SINGLE:
-                CaptchaBlackList.getInstance().add(new BlockDownloadCaptchasByLink(e.getSkipRequest(), link));
+                CaptchaBlackList.getInstance().add(new BlockDownloadCaptchasByLink(e, link));
                 HelpDialog.showCaptchaSkippedDialog();
-                break;
+                throw new CaptchaException(e);
             default:
+                // handled in next switch
                 break;
             }
         }
@@ -617,27 +613,26 @@ public abstract class PluginForHost extends Plugin {
             if (Thread.currentThread() instanceof SingleDownloadController) {
                 DownloadWatchDog.getInstance().stopDownloads();
             }
-            break;
+            throw new CaptchaException(e);
         case REFRESH:
-            // we should forward the refresh request to a new pluginstructure soon. For now. the plugin will just retry
-            return c.getRefreshTrigger();
+            switch (getChallengeRefreshVeto(c)) {
+            case NONE:
+                throw new CaptchaRefreshException(e);
+            default:
+                throw new CaptchaException(e);
+            }
         default:
-            break;
+            throw new CaptchaException(e);
         }
-        throw new CaptchaException(e.getSkipRequest());
     }
 
     public <T> T handleCaptchaChallenge(final DownloadLink link, Challenge<T> c) throws CaptchaException, PluginException, InterruptedException {
-        if (c instanceof ImageCaptchaChallenge) {
-            final File captchaFile = ((ImageCaptchaChallenge) c).getImageFile();
-            cleanUpCaptchaFiles.addIfAbsent(captchaFile);
-        }
-        c.setTimeout(getChallengeTimeout(c));
-        invalidateLastChallengeResponse();
         PluginProgress progress = null;
         Account checkedAccount = null;
         try {
-            if (isAccountLoginCaptchaChallenge(link, c)) {
+            c.setTimeout(getChallengeTimeout(c));
+            invalidateLastChallengeResponse();
+            if (isAccountLoginCaptchaChallenge(c)) {
                 c.setCaptchaRequestType(CaptchaRequestType.HOSTER_LOGIN);
                 /* The account manager shows which captcha is solved for the account that is checked right now. */
                 final Thread thread = Thread.currentThread();
@@ -664,12 +659,11 @@ public abstract class PluginForHost extends Plugin {
                 throw new CaptchaException(blackListEntry);
             }
             final SolverJob<T> job = ChallengeResponseController.getInstance().handle(c);
-            if (!c.isSolved()) {
-                throw new PluginException(LinkStatus.ERROR_CAPTCHA, job.getStatusDetail());
-            } else if (!c.isCaptchaResponseValid()) {
-                throw new PluginException(LinkStatus.ERROR_CAPTCHA, "Captcha reponse value did not validate!");
-            } else {
+            switch (c.getValidationResult()) {
+            case VALID:
                 return c.getResult().getValue();
+            default:
+                throw new PluginException(LinkStatus.ERROR_CAPTCHA, job.getStatusDetail());
             }
         } catch (InterruptedException e) {
             LogSource.exception(logger, e);
@@ -677,21 +671,22 @@ public abstract class PluginForHost extends Plugin {
         } catch (SkipException e) {
             final Thread thread = Thread.currentThread();
             if (thread instanceof SingleDownloadController) {
-                return handleSkipException(getDownloadLink(), c, e);
+                return handleSkipException(getDownloadLink(), e);
             }
             if (thread instanceof LinkCrawlerThread) {
                 Plugin plugin = ((LinkCrawlerThread) thread).getCurrentPlugin();
                 while (plugin != null) {
                     if (plugin instanceof PluginForDecrypt) {
                         final PluginForDecrypt decryptPlugin = (PluginForDecrypt) plugin;
-                        return decryptPlugin.handleSkipException(c, e);
+                        return decryptPlugin.handleSkipException(e);
                     } else {
                         plugin = plugin.getParentPlugin();
                     }
                 }
             }
-            throw new CaptchaException(e.getSkipRequest());
+            throw new CaptchaException(e);
         } finally {
+            c.cleanup();
             if (progress != null) {
                 link.removePluginProgress(progress);
             }
@@ -702,17 +697,17 @@ public abstract class PluginForHost extends Plugin {
     }
 
     /** This gets executed whenever the user does not answer a captcha which then runs into timeout. */
-    public void onCaptchaTimeout(final DownloadLink link, Challenge<?> challenge) throws CaptchaException, PluginException, InterruptedException {
+    public void onCaptchaTimeout(final DownloadLink link, SkipException e) throws CaptchaException, PluginException, InterruptedException {
         switch (JsonConfig.create(CaptchaSettings.class).getOnHosterCaptchaTimeoutAction()) {
         case RETRY:
-            throw new PluginException(LinkStatus.ERROR_RETRY);
+            throw new CaptchaRefreshException(e);
         case ASK:
             if (UIOManager.I().showConfirmDialog(0, _GUI.T.gui_captchaWindow_askForInput(link.getDomainInfo().getTld()), _GUI.T.StatusBarImpl_skippedLinksMarker_desc(1), new AbstractIcon(IconKey.ICON_QUESTION, 32), _GUI.T.CaptchaDialog_layoutDialogContent_refresh(), _GUI.T.AbstractCaptchaDialog_AbstractCaptchaDialog_cancel())) {
-                throw new PluginException(LinkStatus.ERROR_RETRY);
+                throw new CaptchaRefreshException(e);
             }
             break;
         case SKIP_HOSTER:
-            throw new CaptchaException(SkipRequest.BLOCK_HOSTER);
+            throw new CaptchaException(e);
         case SKIP:
             // fallthrough
         default:

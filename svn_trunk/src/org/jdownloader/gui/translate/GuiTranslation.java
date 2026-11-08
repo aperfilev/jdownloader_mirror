@@ -2989,6 +2989,9 @@ public interface GuiTranslation extends TranslateInterface {
     @Default(lngs = { "en" }, values = { "Open My.JDownloader.org tab" })
     String MyJDownloaderSettingsPanel_MyJDownloaderSettingsPanel_tab_();
 
+    @Default(lngs = { "en" }, values = { "What is MyJDownloader?" })
+    String MyJDownloaderSettingsPanel_MyJDownloaderSettingsPanel_whatIs_();
+
     @Default(lngs = { "en" }, values = { "My Account" })
     String MyJDownloaderSettingsPanel_MyJDownloaderSettingsPanel_logins_();
 
@@ -3286,7 +3289,16 @@ public interface GuiTranslation extends TranslateInterface {
     @Default(lngs = { "en" }, values = { "Play sound when a captcha dialog opens (%s1). Click: on/off. Right click: change volume." })
     String AbstractCaptchaDialog_soundToggle_tooltip(String state);
 
-    @Default(lngs = { "en", "de" }, values = { "Show captcha image in greyscale", "Captcha-Bild in Graustufen anzeigen" })
+    @Default(lngs = { "en" }, values = { "Refresh is not possible anymore: This captcha has already been refreshed too often." })
+    String AbstractCaptchaDialog_refreshDisabledLimit_tooltip();
+
+    @Default(lngs = { "en" }, values = { "Login captchas cannot be refreshed (with this button)." })
+    String AbstractCaptchaDialog_refreshDisabledLogin_tooltip();
+
+    @Default(lngs = { "en" }, values = { "Refresh is not possible for this type of captcha." })
+    String AbstractCaptchaDialog_refreshDisabledCaptchaType_tooltip();
+
+    @Default(lngs = { "en" }, values = { "Show captcha image in greyscale" })
     String AbstractImageCaptchaDialog_greyscaleToggle_tooltip();
 
     @Default(lngs = { "en" }, values = { "Visit the Website" })
@@ -5696,8 +5708,11 @@ public interface GuiTranslation extends TranslateInterface {
     @Default(lngs = { "en" }, values = { "Path" })
     String SelectBrowserDialog_column_path();
 
-    @Default(lngs = { "en" }, values = { "Browse..." })
-    String SelectBrowserDialog_browse();
+    @Default(lngs = { "en" }, values = { "Browser not in List? Click to browse for custom browser" })
+    String SelectBrowserDialog_browseCustom();
+
+    @Default(lngs = { "en" }, values = { "Close & Discard changes" })
+    String SelectBrowserDialog_cancel();
 
     @Default(lngs = { "en" }, values = { "Open help article" })
     String SelectBrowserDialog_info_tooltip();
@@ -5711,8 +5726,14 @@ public interface GuiTranslation extends TranslateInterface {
     @Default(lngs = { "en" }, values = { "Number of supported Captcha Types" })
     String SolverOrderTableModel_column_supportedCaptchaTypes();
 
-    @Default(lngs = { "en" }, values = { "Use external solver account(s) to solve captchas?" })
-    String CaptchaConfigPanel_useExternalSolverAccounts();
+    @Default(lngs = { "en" }, values = { "The table below sets the order in which the enabled and ready solvers are used, drag & drop the rows to set your own order." })
+    String CaptchaConfigPanel_solverOrderInfo();
+
+    @Default(lngs = { "en" }, values = { "Sorted by '%s1'-Column" })
+    String SolverOrderTable_sortwarner_title(String column);
+
+    @Default(lngs = { "en" }, values = { "You've just applied a visual sort.\r\nNOTE: This does not change the order of the solvers!\r\nTo revert this, click on the highlighted column header until the highlighting disappears.\r\nTo perform a permanent sort which will change the order of the solvers, press and hold CTRL and click inside any column header.\r\nBe careful with sorting: The order of the solvers in this table is the order they will be used for captcha solving!" })
+    String SolverOrderTable_sortwarner_text();
 
     @Default(lngs = { "en" }, values = { "Avoid external solvers for login captchas?" })
     String CaptchaConfigPanel_avoidAutoSolverForLoginCaptchas();
@@ -6185,6 +6206,9 @@ public interface GuiTranslation extends TranslateInterface {
     @Default(lngs = { "en" }, values = { "Clear local captcha usage history" })
     String CaptchaTypesTable_context_clearHistory();
 
+    @Default(lngs = { "en" }, values = { "Show in solver timing table" })
+    String CaptchaTypesTable_context_showInTimingTable();
+
     @Default(lngs = { "en" }, values = { "Ever used by me?" })
     String CaptchaTypesTable_column_everUsed();
 
@@ -6284,17 +6308,122 @@ public interface GuiTranslation extends TranslateInterface {
     @Default(lngs = { "en" }, values = { "Type" })
     String SolverOrderTableModel_initColumns_type_();
 
-    @Default(lngs = { "en" }, values = { "Wait for" })
-    String SolverOrderTableModel_initColumns_startafter();
-
     @Default(lngs = { "en" }, values = { "Settings" })
     String lit_settings();
 
-    @Default(lngs = { "en" }, values = { "Timeouts" })
-    String SolverOrderTableModel_initColumns_timeout();
+    @Default(lngs = { "en" }, values = { "Solver timing" })
+    String SolverTimingDialog_title();
 
-    @Default(lngs = { "en" }, values = { "Timing Options for %s1 via %s2" })
-    String SolverTimingDialog(String typeName, String service);
+    @Default(lngs = { "en" }, values = { "Configure Solver Timings" })
+    String SolverOrderContainer_configureTimings();
+
+    @Default(lngs = { "en" }, values = { "Shows how a captcha runs through the solvers and lets you set when the next solver is started. Needs at least one enabled solver which is ready." })
+    String SolverOrderContainer_configureTimings_tooltip();
+
+    @Default(lngs = { "en" }, values = { "This shows how a captcha runs through the solvers in the order of the solver table: A solver works on the captcha. If it has no solution after the time shown below it, the next solver is started in parallel to it. If a solver is done without a solution before that, the next one starts right away. 0 seconds = start the next solver immediately. The order shown is usually the order in which the solvers are used, but the controller can change it live for special cases, e.g. if the user prefers manual captcha solvers for login captchas." })
+    String SolverTimingDialog_intro();
+
+    @Default(lngs = { "en" }, values = { "Captcha type:" })
+    String SolverTimingDialog_captchaType();
+
+    @Default(lngs = { "en" }, values = { "All captcha types" })
+    String SolverTimingDialog_allCaptchaTypes();
+
+    @Default(lngs = { "en" }, values = { "Changes apply to the solver as a whole (all captcha types), unless a captcha type has its own value." })
+    String SolverTimingDialog_appliesToSolver();
+
+    @Default(lngs = { "en" }, values = { "Changes apply only to the captcha type: %s1" })
+    String SolverTimingDialog_appliesToCaptchaType(String captchaType);
+
+    @Default(lngs = { "en" }, values = { "There is no enabled solver which is ready." })
+    String SolverTimingDialog_noSolver();
+
+    @Default(lngs = { "en" }, values = { "There is no enabled solver which is ready and supports the captcha type %s1" })
+    String SolverTimingDialog_noSolverForCaptchaType(String captchaType);
+
+    @Default(lngs = { "en" }, values = { "If not solved by %s1, start solver %s2 in parallel after the configured time" })
+    String TimingTableModel_waitRow(String solver, String nextSolver);
+
+    @Default(lngs = { "en" }, values = { "If not solved by %s1, the captcha challenge is skipped until retried by the user." })
+    String TimingTableModel_finalRow(String solver);
+
+    @Default(lngs = { "en" }, values = { "Seconds" })
+    String TimingTableModel_column_seconds();
+
+    @Default(lngs = { "en" }, values = { "%s1s" })
+    String TimingTableModel_seconds(String seconds);
+
+    @Default(lngs = { "en" }, values = { "Challenge timeout: %s1. After this time a captcha is given up, even if not all solvers have been started. Solvers and challenges can affect that timeout." })
+    String SolverTimingDialog_challengeTimeout(String time);
+
+    @Default(lngs = { "en" }, values = { "Immediately" })
+    String TimingTableModel_immediately();
+
+    @Default(lngs = { "en" }, values = { "%s1 (default of the solver)" })
+    String TimingTableModel_secondsSolverDefault(String text);
+
+    @Default(lngs = { "en" }, values = { "%s1 (when %s2 solves %s3)" })
+    String TimingTableModel_secondsCaptchaType(String text, String solver, String captchaType);
+
+    @Default(lngs = { "en" }, values = { "%s1 (when %s2 solves any captcha type)" })
+    String TimingTableModel_secondsAnyCaptchaType(String text, String solver);
+
+    @Default(lngs = { "en" }, values = { "Preselected timings:" })
+    String SolverTimingDialog_preselected();
+
+    @Default(lngs = { "en" }, values = { "Immediately (starts all solvers in parallel)" })
+    String SolverTimingDialog_preselected_immediately();
+
+    @Default(lngs = { "en" }, values = { "Starts all solvers in parallel, can waste paid solver balance" })
+    String SolverTimingDialog_preselected_immediatelyInfo();
+
+    @Default(lngs = { "en" }, values = { "Default" })
+    String SolverTimingDialog_preselected_default();
+
+    @Default(lngs = { "en" }, values = { "Custom" })
+    String SolverTimingDialog_preselected_custom();
+
+    @Default(lngs = { "en" }, values = { "Save" })
+    String SolverTimingDialog_save();
+
+    @Default(lngs = { "en" }, values = { "Close & Discard changes" })
+    String SolverTimingDialog_discard();
+
+    @Default(lngs = { "en" }, values = { "%s1 (value of the solver)" })
+    String TimingTableModel_secondsInherited(String text);
+
+    @Default(lngs = { "en" }, values = { "Maximum time this solver works on a captcha without a solution before the next solver is started. Applies to all captcha types of this solver without an own value." })
+    String TimingTableModel_tooltip_solver();
+
+    @Default(lngs = { "en" }, values = { "Maximum time this solver works on a captcha without a solution before the next solver is started. Applies only to the captcha type: %s1" })
+    String TimingTableModel_tooltip_captchaType(String captchaType);
+
+    @Default(lngs = { "en" }, values = { "The order of the solvers can only be changed in the solver table." })
+    String TimingTable_dragDrop_hint();
+
+    @Default(lngs = { "en" }, values = { "Sets the time of all shown solvers back to the default of the solver." })
+    String TimingTable_reset_tooltip_solver();
+
+    @Default(lngs = { "en" }, values = { "Removes the values of this captcha type of all shown solvers, so the value of the solver applies again." })
+    String TimingTable_reset_tooltip_captchaType();
+
+    @Default(lngs = { "en" }, values = { "Reset captcha type timings" })
+    String TimingTable_reset_captchaType();
+
+    @Default(lngs = { "en" }, values = { "Reset solver timings" })
+    String TimingTable_reset_solver();
+
+    @Default(lngs = { "en" }, values = { "Reset all timings" })
+    String TimingTable_reset_all();
+
+    @Default(lngs = { "en" }, values = { "Resets all timings of all shown solvers: the time of the solver and the times of its captcha types." })
+    String TimingTable_reset_tooltip_all();
+
+    @Default(lngs = { "en" }, values = { "Reset to the default of the solver" })
+    String TimingTable_context_reset_solver();
+
+    @Default(lngs = { "en" }, values = { "Reset to the value of the solver" })
+    String TimingTable_context_reset_captchaType();
 
     @Default(lngs = { "en" }, values = { "Reset" })
     String lit_reset();
@@ -6307,15 +6436,6 @@ public interface GuiTranslation extends TranslateInterface {
 
     @Default(lngs = { "en" }, values = { "Enable %s2 via %s1" })
     String createTooltip_Captcha_Service_getNameWhenEnabled_(String name, String type);
-
-    @Default(lngs = { "en" }, values = { "%s1 waits up to %s2 for %s3" })
-    String TimingTableModel_initColumns_waitloop_print(String name, String formatMilliSeconds, String name2);
-
-    @Default(lngs = { "en" }, values = { "Waittime Loop Detected!" })
-    String TimingTableModel_initColumns_waitloop_title();
-
-    @Default(lngs = { "en" }, values = { "You cannot change this value. This would result in the following wait loop conflict:\r\n\r\n%s1\r\n\r\nPlease break this loop first." })
-    String TimingTableModel_initColumns_waitloop_warning(String string);
 
     @Default(lngs = { "en" }, values = { "Condition" })
     String FilterRuleDialog_layoutDialogContent_lbl_variousflags();
@@ -6910,6 +7030,9 @@ public interface GuiTranslation extends TranslateInterface {
 
     @Default(lngs = { "en" }, values = { "Are you sure? You are trying to disable all download accounts.\r\nIf you continue, JDownloader will NOT use your download accounts unless you re-enable this feature." })
     String are_you_sure_disabled_premium();
+
+    @Default(lngs = { "en" }, values = { "Are you sure? You are trying to disable all external captcha solver accounts.\r\nIf you continue, JDownloader will NOT use your captcha solver accounts unless you re-enable this feature.\r\nLocal solvers and MyJDownloader remote solving are not affected." })
+    String are_you_sure_disabled_captcha_solver_accounts();
 
     @Default(lngs = { "en" }, values = { "Download account usage enabled. If you add a download account, JDownloader will use it." })
     String Premium_enabled_button_tooltip_selected();
@@ -7592,8 +7715,23 @@ public interface GuiTranslation extends TranslateInterface {
     @Default(lngs = { "en" }, values = { "Response is empty" })
     String ValidationResult_EMPTY_RESPONSE();
 
+    @Default(lngs = { "en" }, values = { "Response is too short or too long" })
+    String ValidationResult_WRONG_LENGTH();
+
     @Default(lngs = { "en" }, values = { "Response is not a valid token" })
     String ValidationResult_INVALID_TOKEN();
+
+    @Default(lngs = { "en" }, values = { "%s1 of exactly %s2 characters" })
+    String CaptchaDialog_length_exact(int length, int exact);
+
+    @Default(lngs = { "en" }, values = { "%s1 of %s3 to %s2 characters" })
+    String CaptchaDialog_length_range(int length, int max, int min);
+
+    @Default(lngs = { "en" }, values = { "%s1 of up to %s2 characters" })
+    String CaptchaDialog_length_max(int length, int max);
+
+    @Default(lngs = { "en" }, values = { "%s1 characters (min. %s2)" })
+    String CaptchaDialog_length_min(int length, int min);
 
     @Default(lngs = { "en" }, values = { "Response contains non-digit characters but a numeric response is expected" })
     String ValidationResult_NOT_NUMERIC();
@@ -7609,4 +7747,19 @@ public interface GuiTranslation extends TranslateInterface {
 
     @Default(lngs = { "en" }, values = { "Amount of clicks differs from the expected amount" })
     String ValidationResult_WRONG_CLICK_COUNT();
+
+    @Default(lngs = { "en" }, values = { "%s1 of exactly %s2 clicks" })
+    String MultiClickCaptchaDialog_clicks_exact(int clicks, int exact);
+
+    @Default(lngs = { "en" }, values = { "%s1 of up to %s2 clicks (min. %s3)" })
+    String MultiClickCaptchaDialog_clicks_range(int clicks, int max, int min);
+
+    @Default(lngs = { "en" }, values = { "%s1 clicks (min. %s2)" })
+    String MultiClickCaptchaDialog_clicks_unlimited(int clicks, int min);
+
+    @Default(lngs = { "en" }, values = { "Challenge description: %s1" })
+    String AbstractImageCaptchaDialog_challengeDescription(String description);
+
+    @Default(lngs = { "en" }, values = { "Click to remove" })
+    String MultiClickCaptchaDialog_marker_tooltip();
 }

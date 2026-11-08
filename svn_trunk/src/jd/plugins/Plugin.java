@@ -29,9 +29,11 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.WeakHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -39,61 +41,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.swing.Icon;
-
-import org.appwork.exceptions.WTFException;
-import org.appwork.net.protocol.http.HTTPConstants;
-import org.appwork.storage.JSonMapperException;
-import org.appwork.storage.JSonStorage;
-import org.appwork.storage.TypeRef;
-import org.appwork.storage.simplejson.ParserException;
-import org.appwork.uio.CloseReason;
-import org.appwork.uio.UIOManager;
-import org.appwork.utils.DebugMode;
-import org.appwork.utils.Exceptions;
-import org.appwork.utils.Hash;
-import org.appwork.utils.IO;
-import org.appwork.utils.Regex;
-import org.appwork.utils.StringUtils;
-import org.appwork.utils.encoding.URLEncode;
-import org.appwork.utils.logging2.LogInterface;
-import org.appwork.utils.logging2.extmanager.LoggerFactory;
-import org.appwork.utils.net.HTTPHeader;
-import org.appwork.utils.net.httpconnection.HTTPConnectionUtils;
-import org.appwork.utils.net.httpconnection.HTTPConnectionUtils.DispositionHeader;
-import org.appwork.utils.net.httpconnection.HTTPProxy;
-import org.jdownloader.auth.AuthenticationInfo.Type;
-import org.jdownloader.auth.Login;
-import org.jdownloader.captcha.v2.Challenge;
-import org.jdownloader.captcha.v2.challenge.recaptcha.v2.RecaptchaV2Challenge;
-import org.jdownloader.captcha.v2.solverjob.SolverJob;
-import org.jdownloader.controlling.filter.CompiledFiletypeFilter;
-import org.jdownloader.controlling.filter.CompiledFiletypeFilter.CompiledFiletypeExtension;
-import org.jdownloader.gui.IconKey;
-import org.jdownloader.gui.dialog.AskForUserAndPasswordDialog;
-import org.jdownloader.gui.dialog.AskUsernameAndPasswordDialogInterface;
-import org.jdownloader.gui.notify.BasicNotify;
-import org.jdownloader.gui.notify.BubbleNotify;
-import org.jdownloader.gui.notify.BubbleNotify.AbstractNotifyWindowFactory;
-import org.jdownloader.gui.notify.gui.AbstractNotifyWindow;
-import org.jdownloader.images.AbstractIcon;
-import org.jdownloader.logging.LogController;
-import org.jdownloader.plugins.UserIOProgress;
-import org.jdownloader.plugins.components.captchasolver.abstractPluginForCaptchaSolver;
-import org.jdownloader.plugins.config.AccountConfigInterface;
-import org.jdownloader.plugins.config.PluginConfigInterface;
-import org.jdownloader.plugins.config.PluginHost;
-import org.jdownloader.plugins.config.PluginJsonConfig;
-import org.jdownloader.plugins.controller.LazyPlugin;
-import org.jdownloader.plugins.controller.LazyPlugin.FEATURE;
-import org.jdownloader.plugins.controller.PluginClassLoader;
-import org.jdownloader.plugins.controller.PluginClassLoader.PluginClassLoaderChild;
-import org.jdownloader.plugins.controller.UpdateRequiredClassNotFoundException;
-import org.jdownloader.plugins.controller.crawler.CrawlerPluginController;
-import org.jdownloader.plugins.controller.crawler.LazyCrawlerPlugin;
-import org.jdownloader.plugins.controller.host.LazyHostPlugin;
-import org.jdownloader.plugins.controller.host.PluginFinder;
-import org.jdownloader.settings.staticreferences.CFG_CAPTCHA;
-import org.jdownloader.translate._JDT;
 
 import jd.PluginWrapper;
 import jd.config.ConfigContainer;
@@ -123,19 +70,77 @@ import jd.plugins.PluginForHost.FILENAME_SOURCE;
 import jd.plugins.components.SiteType.SiteTemplate;
 import jd.utils.JDUtilities;
 
+import org.appwork.exceptions.WTFException;
+import org.appwork.net.protocol.http.HTTPConstants;
+import org.appwork.storage.JSonMapperException;
+import org.appwork.storage.JSonStorage;
+import org.appwork.storage.TypeRef;
+import org.appwork.storage.config.annotations.LabelInterface;
+import org.appwork.storage.simplejson.ParserException;
+import org.appwork.uio.CloseReason;
+import org.appwork.uio.UIOManager;
+import org.appwork.utils.DebugMode;
+import org.appwork.utils.Exceptions;
+import org.appwork.utils.Hash;
+import org.appwork.utils.IO;
+import org.appwork.utils.Regex;
+import org.appwork.utils.StringUtils;
+import org.appwork.utils.encoding.URLEncode;
+import org.appwork.utils.logging2.LogInterface;
+import org.appwork.utils.logging2.extmanager.LoggerFactory;
+import org.appwork.utils.net.HTTPHeader;
+import org.appwork.utils.net.httpconnection.HTTPConnectionUtils;
+import org.appwork.utils.net.httpconnection.HTTPConnectionUtils.DispositionHeader;
+import org.appwork.utils.net.httpconnection.HTTPProxy;
+import org.jdownloader.auth.AuthenticationInfo.Type;
+import org.jdownloader.auth.Login;
+import org.jdownloader.captcha.v2.Challenge;
+import org.jdownloader.captcha.v2.challenge.recaptcha.v2.RecaptchaV2Challenge;
+import org.jdownloader.captcha.v2.challenge.stringcaptcha.ImageCaptchaChallenge;
+import org.jdownloader.captcha.v2.solverjob.SolverJob;
+import org.jdownloader.controlling.filter.CompiledFiletypeFilter;
+import org.jdownloader.controlling.filter.CompiledFiletypeFilter.CompiledFiletypeExtension;
+import org.jdownloader.gui.IconKey;
+import org.jdownloader.gui.dialog.AskForUserAndPasswordDialog;
+import org.jdownloader.gui.dialog.AskUsernameAndPasswordDialogInterface;
+import org.jdownloader.gui.notify.BasicNotify;
+import org.jdownloader.gui.notify.BubbleNotify;
+import org.jdownloader.gui.notify.BubbleNotify.AbstractNotifyWindowFactory;
+import org.jdownloader.gui.notify.gui.AbstractNotifyWindow;
+import org.jdownloader.gui.translate._GUI;
+import org.jdownloader.images.AbstractIcon;
+import org.jdownloader.logging.LogController;
+import org.jdownloader.plugins.UserIOProgress;
+import org.jdownloader.plugins.components.captchasolver.abstractPluginForCaptchaSolver;
+import org.jdownloader.plugins.config.AccountConfigInterface;
+import org.jdownloader.plugins.config.PluginConfigInterface;
+import org.jdownloader.plugins.config.PluginHost;
+import org.jdownloader.plugins.config.PluginJsonConfig;
+import org.jdownloader.plugins.controller.LazyPlugin;
+import org.jdownloader.plugins.controller.LazyPlugin.FEATURE;
+import org.jdownloader.plugins.controller.PluginClassLoader;
+import org.jdownloader.plugins.controller.PluginClassLoader.PluginClassLoaderChild;
+import org.jdownloader.plugins.controller.UpdateRequiredClassNotFoundException;
+import org.jdownloader.plugins.controller.crawler.CrawlerPluginController;
+import org.jdownloader.plugins.controller.crawler.LazyCrawlerPlugin;
+import org.jdownloader.plugins.controller.host.LazyHostPlugin;
+import org.jdownloader.plugins.controller.host.PluginFinder;
+import org.jdownloader.settings.staticreferences.CFG_CAPTCHA;
+import org.jdownloader.translate._JDT;
+
 /**
  * Diese abstrakte Klasse steuert den Zugriff auf weitere Plugins. Alle Plugins müssen von dieser Klasse abgeleitet werden.
  *
  * Alle Plugins verfügen über einen Event Mechanismus
  */
 public abstract class Plugin implements ActionListener {
-    public static final HTTPHeader             OPEN_RANGE_REQUEST  = new HTTPHeader(HTTPConstants.HEADER_REQUEST_RANGE, "bytes=0-");
-    public static final String                 HTTP_LINKS_HOST     = "http links";
-    public static final String                 DIRECT_HTTP_HOST    = "DirectHTTP";
-    public static final String                 FTP_HOST            = "ftp";
-    protected LogInterface                     logger              = LogController.TRASH;
-    protected final CopyOnWriteArrayList<File> cleanUpCaptchaFiles = new CopyOnWriteArrayList<File>();
-    private CrawledLink                        currentLink         = null;
+    public static final HTTPHeader            OPEN_RANGE_REQUEST = new HTTPHeader(HTTPConstants.HEADER_REQUEST_RANGE, "bytes=0-");
+    public static final String                HTTP_LINKS_HOST    = "http links";
+    public static final String                DIRECT_HTTP_HOST   = "DirectHTTP";
+    public static final String                FTP_HOST           = "ftp";
+    protected LogInterface                    logger             = LogController.TRASH;
+    protected final Map<Challenge<?>, Object> challenges         = new LinkedHashMap<Challenge<?>, Object>();
+    private CrawledLink                       currentLink        = null;
 
     public void setLogger(LogInterface logger) {
         if (logger == null) {
@@ -260,13 +265,17 @@ public abstract class Plugin implements ActionListener {
         return null;
     }
 
-    protected boolean isAccountLoginCaptchaChallenge(final Challenge<?> c) {
+    public boolean isAccountLoginCaptchaChallenge(final Challenge<?> c) {
+        final Boolean isAccountLogin = c.isAccountLogin();
+        if (isAccountLogin != null) {
+            return isAccountLogin.booleanValue();
+        }
         final Account currentAccount = getCurrentAccount();
         if (currentAccount != null && Thread.holdsLock(currentAccount)) {
             // Captcha Challenge while holding lock on account heavily indicates that we're inside account login/check
             return true;
         }
-        return c.isCreatedInsideAccountChecker() || c.isAccountLogin();
+        return false;
     }
 
     protected boolean looksLikeDownloadableContent(final URLConnectionAdapter urlConnection) {
@@ -1029,15 +1038,9 @@ public abstract class Plugin implements ActionListener {
         this.parent = null;
         currentAccount = null;
         try {
-            cleanupLastChallengeResponse();
+            cleanupChallenges();
         } finally {
             br = null;
-            while (cleanUpCaptchaFiles.size() > 0) {
-                final File clean = cleanUpCaptchaFiles.remove(0);
-                if (clean != null && !clean.delete() && clean.exists()) {
-                    clean.deleteOnExit();
-                }
-            }
         }
     }
 
@@ -1191,7 +1194,6 @@ public abstract class Plugin implements ActionListener {
         final Calendar calendar = Calendar.getInstance();
         final String date = String.format(Locale.ROOT, "%1$td.%1$tm.%1$tY_%1$tH.%1$tM.%1$tS.", calendar) + new Random().nextInt(999);
         final File dest = JDUtilities.getResourceFile("captchas/" + this.getHost() + "_" + date + extension, true);
-        cleanUpCaptchaFiles.addIfAbsent(dest);
         return dest;
     }
 
@@ -1353,19 +1355,20 @@ public abstract class Plugin implements ActionListener {
         return null;
     }
 
-    protected List<Challenge<?>> challenges = null;
-
     /**
      * returns a unmodifiiable List of all challenges done so far in this plugin
      *
      * @return
      */
     public List<Challenge<?>> getChallenges() {
-        final List<Challenge<?>> challenges = this.challenges;
-        if (challenges == null) {
-            return Collections.unmodifiableList(new ArrayList<Challenge<?>>());
-        } else {
-            return Collections.unmodifiableList(challenges);
+        synchronized (challenges) {
+            return Collections.unmodifiableList(new ArrayList<Challenge<?>>(challenges.keySet()));
+        }
+    }
+
+    public Challenge<?> getLastestChallengeResponse() {
+        synchronized (challenges) {
+            return new LinkedList<Challenge<?>>(challenges.keySet()).peekLast();
         }
     }
 
@@ -1373,8 +1376,9 @@ public abstract class Plugin implements ActionListener {
      * returns the current challenge round. if there has been 1 captcha so far, this will return 1
      */
     public int getChallengeRound() {
-        final List<Challenge<?>> challenges = this.challenges;
-        return challenges == null ? 0 : challenges.size();
+        synchronized (challenges) {
+            return challenges.size();
+        }
     }
 
     /**
@@ -1383,24 +1387,27 @@ public abstract class Plugin implements ActionListener {
      * @param challenge
      */
     public synchronized int addChallenge(Challenge<?> challenge) {
-        final List<Challenge<?>> nchallenges = new ArrayList<Challenge<?>>();
-        final List<Challenge<?>> old = this.challenges;
-        if (old != null) {
-            nchallenges.addAll(old);
+        synchronized (challenges) {
+            if (challenges.containsKey(challenge)) {
+                return challenges.size();
+            }
+            challenges.put(challenge, null);
+            return challenges.size() - 1;
         }
-        nchallenges.add(challenge);
-        this.challenges = nchallenges;
-        return nchallenges.size() - 1;
     }
 
     public void invalidateLastChallengeResponse() {
-        final List<Challenge<?>> ch = challenges;
-        if (ch != null) {
-            for (final Challenge<?> c : ch) {
-                final SolverJob<?> job = c.getJob();
-                if (job != null) {
-                    job.invalidate();
-                }
+        for (Plugin plugin : pluginInstances) {
+            plugin.invalidateLastChallengeResponse();
+        }
+        final List<Challenge<?>> challenges = getChallenges();
+        if (challenges == null || challenges.size() == 0) {
+            return;
+        }
+        for (final Challenge<?> challenge : challenges) {
+            final SolverJob<?> job = challenge.getJob();
+            if (job != null) {
+                job.invalidate();
             }
         }
     }
@@ -1524,15 +1531,18 @@ public abstract class Plugin implements ActionListener {
         }
     }
 
-    public synchronized void cleanupLastChallengeResponse() {
-        final List<Challenge<?>> ch = challenges;
-        challenges = null;
-        if (ch == null || ch.size() == 0) {
+    public synchronized void cleanupChallenges() {
+        final List<Challenge<?>> challenges;
+        synchronized (Plugin.this.challenges) {
+            challenges = getChallenges();
+            Plugin.this.challenges.clear();
+        }
+        if (challenges == null || challenges.size() == 0) {
             return;
         }
-        for (final Challenge<?> c : ch) {
+        for (final Challenge<?> challenge : challenges) {
             try {
-                c.cleanup();
+                challenge.cleanup();
             } catch (Throwable e) {
                 final LogInterface logger = getLogger();
                 if (logger != null) {
@@ -1545,15 +1555,71 @@ public abstract class Plugin implements ActionListener {
     }
 
     public void validateLastChallengeResponse() {
-        final List<Challenge<?>> ch = challenges;
-        if (ch == null || ch.size() == 0) {
+        for (Plugin plugin : pluginInstances) {
+            plugin.validateLastChallengeResponse();
+        }
+        final Challenge<?> last = getLastestChallengeResponse();
+        if (last == null) {
             return;
         }
-        final Challenge<?> latest = ch.get(ch.size() - 1);
-        final SolverJob<?> job = latest.getJob();
+        final SolverJob<?> job = last.getJob();
         if (job != null) {
             job.validate();
         }
+    }
+
+    /** The reason why a captcha cannot be refreshed, see {@link Plugin#getChallengeRefreshVeto(Challenge)}. */
+    public static enum ChallengeRefreshVeto implements LabelInterface {
+        /** Login captchas (account check) cannot be refreshed. */
+        REFRESH_LOGIN_CAPTCHA_NOT_ALLOWED {
+            @Override
+            public String getLabel() {
+                return _GUI.T.AbstractCaptchaDialog_refreshDisabledLogin_tooltip();
+            }
+        },
+        /** This type of captcha cannot be refreshed, e.g. because it is not an image captcha. */
+        REFRESH_CAPTCHA_TYPE_NOT_ALLOWED {
+            @Override
+            public String getLabel() {
+                return _GUI.T.AbstractCaptchaDialog_refreshDisabledCaptchaType_tooltip();
+            }
+        },
+        /** The captcha has been refreshed too often already, e.g. thrown by plugin that "knows" that a refresh is no longer possible */
+        REFRESH_LIMIT_REACHED {
+            @Override
+            public String getLabel() {
+                return _GUI.T.AbstractCaptchaDialog_refreshDisabledLimit_tooltip();
+            }
+        },
+        NONE {
+            @Override
+            public String getLabel() {
+                return null;
+            }
+        };
+    }
+
+    public ChallengeRefreshVeto getChallengeRefreshVeto(final Challenge<?> challenge) {
+        if (challenge == null) {
+            return ChallengeRefreshVeto.REFRESH_CAPTCHA_TYPE_NOT_ALLOWED;
+        }
+        if (isAccountLoginCaptchaChallenge(challenge)) {
+            // TODO: why not also allow refresh for logins?
+            /**
+             * 2026-11-05: psp <br>
+             * Do not allow refresh for login captchas because: <br>
+             * 1. Mostly that will be interactive captchas anyways. <br>
+             * 2. Every refresh could trigger a fresh login (fetchAccountInfo) attempt (re-send login credentials) which could allow the
+             * user to easily get his account temp banned. <br>
+             * 3. Not sure how retry + adding an account for the first time (modal add account dialog) would play together.
+             */
+            return ChallengeRefreshVeto.REFRESH_LOGIN_CAPTCHA_NOT_ALLOWED;
+        }
+        /* 2025-11-05: Only alow refresh for image captchas. */
+        if (!(challenge instanceof ImageCaptchaChallenge)) {
+            return ChallengeRefreshVeto.REFRESH_CAPTCHA_TYPE_NOT_ALLOWED;
+        }
+        return ChallengeRefreshVeto.NONE;
     }
 
     public FEATURE[] getFeatures() {
@@ -1561,8 +1627,7 @@ public abstract class Plugin implements ActionListener {
     }
 
     public boolean hasChallengeResponse() {
-        final List<Challenge<?>> challenges = this.challenges;
-        return challenges != null && challenges.size() > 0;
+        return getChallengeRound() > 0;
     }
 
     /*

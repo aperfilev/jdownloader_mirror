@@ -1,39 +1,40 @@
 package org.jdownloader.captcha.v2;
 
-import org.appwork.storage.config.annotations.LabelInterface;
-import org.jdownloader.gui.translate._GUI;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-
-import org.appwork.exceptions.WTFException;
-import org.appwork.utils.StringUtils;
-import org.jdownloader.DomainInfo;
-import org.jdownloader.captcha.v2.ChallengeSolver.SolverType;
-import org.jdownloader.captcha.v2.solverjob.ResponseList;
-import org.jdownloader.captcha.v2.solverjob.SolverJob;
-import org.jdownloader.controlling.UniqueAlltimeID;
 
 import jd.controlling.accountchecker.AccountCheckerThread;
 import jd.controlling.captcha.SkipRequest;
 import jd.controlling.linkcrawler.CrawledLink;
 import jd.controlling.linkcrawler.LinkCrawler;
-import org.appwork.utils.net.httpconnection.HTTPProxy;
-
 import jd.plugins.DownloadLink;
 import jd.plugins.FilePackage;
 import jd.plugins.Plugin;
 import jd.plugins.PluginForDecrypt;
 import jd.plugins.PluginForHost;
 
+import org.appwork.exceptions.WTFException;
+import org.appwork.storage.config.annotations.LabelInterface;
+import org.appwork.utils.StringUtils;
+import org.appwork.utils.Time;
+import org.appwork.utils.net.httpconnection.HTTPProxy;
+import org.jdownloader.DomainInfo;
+import org.jdownloader.captcha.v2.ChallengeSolver.SolverType;
+import org.jdownloader.captcha.v2.solverjob.ResponseList;
+import org.jdownloader.captcha.v2.solverjob.SolverJob;
+import org.jdownloader.controlling.UniqueAlltimeID;
+import org.jdownloader.gui.translate._GUI;
+
 public abstract class Challenge<T> {
     private final UniqueAlltimeID id                 = new UniqueAlltimeID();
     private final Class<T>        resultType;
-    private final long            created            = System.currentTimeMillis();
+    private final long            created            = Time.systemIndependentCurrentJVMTimeMillis();
     private volatile long         lastActivity       = created;
     private int                   timeout            = -1;
     private final boolean         createdInsideAccountChecker;
     private int                   round              = -1;
     private CaptchaRequestType    captchaRequestType = null;
+    private final boolean         guessAccountLogin;
 
     public enum CaptchaRequestType implements LabelInterface {
         HOSTER {
@@ -81,18 +82,6 @@ public abstract class Challenge<T> {
         }
     }
 
-    /**
-     * Used to validate result against expected pattern. <br />
-     * This is different to AbstractBrowserChallenge.isSolved, as we don't want to throw the same error exception.
-     *
-     * @param result
-     * @return
-     * @author raztoki
-     */
-    public boolean isCaptchaResponseValid() {
-        return isSolved();
-    }
-
     private boolean canBeSkippedByPluginforDecrypt(final SkipRequest skipRequest, final ChallengeSolver<?> solver, final Challenge<?> challenge, final Plugin plugin) {
         final Plugin challengePlugin = challenge.getPlugin();
         if (challengePlugin == null || challenge.getCaptchaRequestType() != CaptchaRequestType.DECRYPTER) {
@@ -125,8 +114,26 @@ public abstract class Challenge<T> {
         }
     }
 
+    public boolean isGuessAccountLogin() {
+        return guessAccountLogin;
+    }
+
+    public Boolean isAccountLogin() {
+        final CaptchaRequestType requestType = getCaptchaRequestType();
+        if (requestType != null) {
+            return CaptchaRequestType.HOSTER_LOGIN.equals(requestType);
+        }
+        if (isGuessAccountLogin()) {
+            return true;
+        }
+        if (isCreatedInsideAccountChecker()) {
+            return true;
+        }
+        return null;
+    }
+
     private boolean canBeSkippedByPluginforHost(final SkipRequest skipRequest, final ChallengeSolver<?> solver, final Challenge<?> challenge, final Plugin plugin) {
-        if (isCreatedInsideAccountChecker() || isAccountLogin()) {
+        if (Boolean.TRUE.equals(isAccountLogin())) {
             /* we don't want to skip login captcha inside fetchAccountInfo(Thread is AccountCheckerThread) */
             return false;
         }
@@ -166,7 +173,13 @@ public abstract class Challenge<T> {
      * @return {@link ValidationResult#VALID} or the exact reason why the response was rejected
      */
     public ValidationResult validateResponse(AbstractResponse<T> response) {
-        return ValidationResult.VALID;
+        if (response == null) {
+            return ValidationResult.INVALID;
+        } else if (response.getValue() == null) {
+            return ValidationResult.EMPTY_RESPONSE;
+        } else {
+            return ValidationResult.VALID;
+        }
     }
 
     public UniqueAlltimeID getId() {
@@ -186,6 +199,36 @@ public abstract class Challenge<T> {
             }
         }
         resultType = (Class<T>) ((ParameterizedType) superClass).getActualTypeArguments()[0];
+        guessAccountLogin = guessAccountLogin();
+    }
+
+    protected boolean guessAccountLogin() {
+        final StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        Boolean elementWithinPlugin = null;
+        for (StackTraceElement element : stackTrace) {
+            try {
+                final Class<?> clazz = Class.forName(element.getClassName());
+                final boolean isPluginClazz = Plugin.class.isAssignableFrom(clazz);
+                if (isPluginClazz) {
+                    if (elementWithinPlugin == null || elementWithinPlugin.booleanValue() == true) {
+                        elementWithinPlugin = true;
+                    } else {
+                        return false;
+                    }
+                } else if (Boolean.TRUE.equals(elementWithinPlugin)) {
+                    return false;
+                }
+            } catch (ClassNotFoundException ignore) {
+            }
+            if (elementWithinPlugin == null) {
+                continue;
+            } else if (StringUtils.startsWithCaseInsensitive(element.getMethodName(), "fetchAccountInfo")) {
+                return true;
+            } else if (StringUtils.startsWithCaseInsensitive(element.getMethodName(), "login")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isCreatedInsideAccountChecker() {
@@ -204,9 +247,19 @@ public abstract class Challenge<T> {
         return resultType;
     }
 
-    public boolean isSolved() {
+    /**
+     * Returns the validation state of this challenge after the solvers are done: {@link ValidationResult#VALID} if there is a usable
+     * result. Otherwise the exact reason why the answer(s) of the solver(s) were rejected (see {@link #validateResponse(AbstractResponse)}
+     * ), or {@link ValidationResult#INVALID} if there is no more detailed reason (e.g. no solver delivered an answer).
+     */
+    public ValidationResult getValidationResult() {
         final ResponseList<T> results = getResult();
-        return results != null && results.getValue() != null;
+        if (results != null && results.getValue() != null) {
+            return ValidationResult.VALID;
+        }
+        final SolverJob<T> job = this.job;
+        final ValidationResult rejected = job == null ? null : job.getRejectedValidationResult();
+        return rejected != null ? rejected : ValidationResult.INVALID;
     }
 
     private String typeID;
@@ -227,7 +280,7 @@ public abstract class Challenge<T> {
     public boolean keepAlive() {
         final Plugin plugin = getPlugin();
         if (plugin != null && plugin.keepAlive(this)) {
-            lastActivity = System.currentTimeMillis();
+            lastActivity = Time.systemIndependentCurrentJVMTimeMillis();
             return true;
         } else {
             return false;
@@ -246,7 +299,7 @@ public abstract class Challenge<T> {
     public int getRemainingTimeout() {
         final long validUntil = getValidUntil();
         if (validUntil > 0) {
-            return (int) Math.max(0, validUntil - System.currentTimeMillis());
+            return (int) Math.max(0, validUntil - Time.systemIndependentCurrentJVMTimeMillis());
         } else {
             return -1;
         }
@@ -314,26 +367,13 @@ public abstract class Challenge<T> {
         return null;
     }
 
-    // Workaround until we implemented proper Refresh SUpport in the plugins
-    public T getRefreshTrigger() {
-        if (getResultType() == String.class) {
-            return (T) "";
-        } else {
-            return null;
-        }
-    }
-
     public AbstractResponse<T> parseAPIAnswer(String result, String resultFormat, ChallengeSolver<?> solver) {
         return null;
     }
 
-    public boolean isRefreshTrigger(String result) {
-        return result == getRefreshTrigger();
-    }
-
     public void initController(SolverJob<T> job) {
         this.job = job;
-        Plugin plg = getPlugin();
+        final Plugin plg = getPlugin();
         if (plg != null) {
             round = plg.addChallenge(this);
         }
@@ -383,12 +423,9 @@ public abstract class Challenge<T> {
         return captchaRequestType;
     }
 
-    public void setCaptchaRequestType(CaptchaRequestType captchaRequestType) {
+    public Challenge<T> setCaptchaRequestType(CaptchaRequestType captchaRequestType) {
         this.captchaRequestType = captchaRequestType;
-    }
-
-    public boolean isAccountLogin() {
-        return this.getCaptchaRequestType() == CaptchaRequestType.HOSTER_LOGIN;
+        return this;
     }
 
     private volatile HTTPProxy proxy = null;
@@ -417,8 +454,8 @@ public abstract class Challenge<T> {
      * Returns true if all requests that belong to this challenge (loading the challenge, solving it, sending the result to the website)
      * have to come from the same IP address as the requests of the user/JDownloader. <br>
      * Some captchas bind the challenge or the solution to the IP address that requested the challenge, e.g. powCAPTCHA. A solver which
-     * works from another IP address (e.g. external solver services which solve the captcha on their own servers/workers) cannot solve
-     * such a challenge: the website would reject the result. <br>
+     * works from another IP address (e.g. external solver services which solve the captcha on their own servers/workers) cannot solve such
+     * a challenge: the website would reject the result. <br>
      * Default: false. Challenges of captchas that are bound to the IP address have to override this. <br>
      * See {@link ChallengeSolver#getChallengeVetoReason(Challenge)}: External solvers are only used for such a challenge if the challenge
      * has a proxy ({@link #getProxy()}) and the solver supports proxies ({@link ChallengeSolver.SolverFeature#PROXY}).

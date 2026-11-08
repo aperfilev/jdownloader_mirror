@@ -18,8 +18,6 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -49,6 +47,15 @@ import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+
+import jd.controlling.linkcrawler.CrawledLink;
+import jd.gui.swing.dialog.DialogType;
+import jd.gui.swing.jdgui.JDGui;
+import jd.plugins.DownloadLink;
+import jd.plugins.Plugin;
+import jd.plugins.PluginForDecrypt;
+import jd.plugins.PluginForHost;
+import net.miginfocom.swing.MigLayout;
 
 import org.appwork.exceptions.WTFException;
 import org.appwork.storage.config.JsonConfig;
@@ -87,15 +94,6 @@ import org.jdownloader.settings.staticreferences.CFG_CAPTCHA;
 import org.jdownloader.settings.staticreferences.CFG_GUI;
 import org.jdownloader.settings.staticreferences.CFG_SOUND;
 import org.jdownloader.updatev2.gui.LAFOptions;
-
-import jd.controlling.linkcrawler.CrawledLink;
-import jd.gui.swing.dialog.DialogType;
-import jd.gui.swing.jdgui.JDGui;
-import jd.plugins.DownloadLink;
-import jd.plugins.Plugin;
-import jd.plugins.PluginForDecrypt;
-import jd.plugins.PluginForHost;
-import net.miginfocom.swing.MigLayout;
 
 public abstract class AbstractCaptchaDialog<T> extends AbstractDialog<T> {
     // private LocationStorage config;
@@ -495,40 +493,47 @@ public abstract class AbstractCaptchaDialog<T> extends AbstractDialog<T> {
         return ret;
     }
 
+    /**
+     * Creates the refresh button. A click sets the refresh flag and closes the dialog, see {@link #isRefresh()}. It is disabled if
+     * {@link #isRefreshAllowed()} returns false.
+     */
+    protected ExtButton createRefreshButton() {
+        final boolean refreshAllowed = Plugin.ChallengeRefreshVeto.NONE.equals(getRefreshVeto());
+        final ExtButton refreshBtn = new ExtButton(new AppAction() {
+            {
+                setSmallIcon(new AbstractIcon(IconKey.ICON_REFRESH, 18));
+                /* A disabled button explains why a refresh is not possible anymore. */
+                setTooltipText(getRefreshTooltip());
+                if (refreshAllowed) {
+                    /* No shortcut (and no shortcut hint in the tooltip) if a refresh is not possible anymore. */
+                    KeyStroke ks = KeyStroke.getKeyStroke(CFG_GUI.CFG.getShortcutForCaptchaDialogRefresh());
+                    if (ks == null) {
+                        ks = KeyStroke.getKeyStroke("pressed F5");
+                    }
+                    setAccelerator(ks);
+                }
+                setEnabled(refreshAllowed);
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                refresh = true;
+                setReturnmask(false);
+                dispose();
+            }
+        }) {
+            @Override
+            public int getTooltipDelay(Point mousePositionOnScreen) {
+                return 500;
+            }
+        };
+        refreshBtn.setRolloverEffectEnabled(true);
+        return refreshBtn;
+    }
+
     @Override
     protected DefaultButtonPanel getDefaultButtonPanel() {
         final DefaultButtonPanel ret = new DefaultButtonPanel("ins 0", "[]", "0[grow,fill]0") {
-            @Override
-            public void addOKButton(JButton okButton) {
-                final ExtButton refreshBtn = new ExtButton(new AppAction() {
-                    {
-                        setSmallIcon(new AbstractIcon(IconKey.ICON_REFRESH, 18));
-                        setTooltipText(_GUI.T.CaptchaDialog_layoutDialogContent_refresh());
-                        KeyStroke ks = KeyStroke.getKeyStroke(CFG_GUI.CFG.getShortcutForCaptchaDialogRefresh());
-                        if (ks == null) {
-                            ks = KeyStroke.getKeyStroke("pressed F5");
-                        }
-                        setAccelerator(ks);
-                    }
-
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        refresh = true;
-                        setReturnmask(false);
-                        dispose();
-                    }
-                }) {
-                    @Override
-                    public int getTooltipDelay(Point mousePositionOnScreen) {
-                        return 500;
-                    }
-                };
-                //
-                refreshBtn.setRolloverEffectEnabled(true);
-                super.add(refreshBtn, "alignx right,width 28!");
-                super.addOKButton(okButton);
-            }
-
             @Override
             public void addCancelButton(final JButton cancelButton) {
                 super.addCancelButton(cancelButton);
@@ -552,6 +557,8 @@ public abstract class AbstractCaptchaDialog<T> extends AbstractDialog<T> {
         if (isSoundToggleVisible()) {
             ret.add(createSoundToggle(), "width 28!");
         }
+        /* The refresh button always stands directly next to the sound toggle, in front of the "Hate captchas" text. */
+        ret.add(createRefreshButton(), "width 28!");
         ExtButton premium = new ExtButton(new AppAction() {
             /**
              *
@@ -836,34 +843,11 @@ public abstract class AbstractCaptchaDialog<T> extends AbstractDialog<T> {
             return;
         }
         /*
-         * Same order in which the solvers are used: a solver that has to wait for another one (see JobRunnable#getWaitFor) comes after it.
-         * Ties are decided by the per-job tie-break order.
-         */
-        Collections.sort(solvers, new Comparator<ChallengeSolver<?>>() {
-            @Override
-            public int compare(final ChallengeSolver<?> a, final ChallengeSolver<?> b) {
-                final int aWaitsForB = JobRunnable.getWaitFor(a.getService(), b.getService(), job);
-                final int bWaitsForA = JobRunnable.getWaitFor(b.getService(), a.getService(), job);
-                if (aWaitsForB != bWaitsForA) {
-                    return aWaitsForB > bWaitsForA ? 1 : -1;
-                }
-                final int aOrder = job.getExternalTieBreakOrder(a.getService().getID());
-                final int bOrder = job.getExternalTieBreakOrder(b.getService().getID());
-                return aOrder < bOrder ? -1 : (aOrder == bOrder ? 0 : 1);
-            }
-        });
-        /*
-         * Only the wait until the captcha is sent to the first external solver is shown. It waits for all other solvers in parallel, so the
-         * longest wait counts.
+         * The pending solvers are already in the order in which they are used (the order of the solvers in the job, see
+         * SolverJob#getPreviousSolver). Only the wait until the captcha is sent to the first external solver is shown.
          */
         final ChallengeSolver<?> first = solvers.get(0);
-        long wait = 0;
-        for (final ChallengeSolver<?> other : job.getSolverList()) {
-            if (other != first) {
-                wait = Math.max(wait, JobRunnable.getWaitFor(first.getService(), other.getService(), job));
-            }
-        }
-        final long remaining = Math.max(0, wait - (System.currentTimeMillis() - job.getCreated()));
+        final long remaining = job.getRemainingWaitMillis(first);
         final MigPanel externalPanel = new MigPanel("ins 5 0 0 0,wrap 1", "[grow,fill]", "[]");
         SwingUtils.setOpaque(externalPanel, false);
         /* Fixed html width: a plain label would make the whole dialog as wide as the text. */
@@ -935,6 +919,27 @@ public abstract class AbstractCaptchaDialog<T> extends AbstractDialog<T> {
     }
 
     protected abstract JPanel createCaptchaPanel();
+
+    /** Returns the reason why the challenge cannot be refreshed */
+    protected Plugin.ChallengeRefreshVeto getRefreshVeto() {
+        final Plugin plugin = this.plugin;
+        if (plugin == null) {
+            return Plugin.ChallengeRefreshVeto.REFRESH_CAPTCHA_TYPE_NOT_ALLOWED;
+        }
+        return plugin.getChallengeRefreshVeto(getChallenge());
+    }
+
+    /** Returns the tooltip of the refresh button */
+    protected String getRefreshTooltip() {
+        /* The plugin tells why the challenge cannot be refreshed. */
+        final Plugin.ChallengeRefreshVeto veto = getRefreshVeto();
+        switch (veto) {
+        case NONE:
+            return _GUI.T.CaptchaDialog_layoutDialogContent_refresh();
+        default:
+            return veto.getLabel();
+        }
+    }
 
     public boolean isRefresh() {
         return refresh;

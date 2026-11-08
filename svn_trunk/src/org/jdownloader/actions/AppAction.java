@@ -22,18 +22,40 @@ import org.jdownloader.images.NewTheme;
  *
  */
 public abstract class AppAction extends BasicAction {
+    private final static ThreadLocal<Boolean> VALIDATION = new ThreadLocal<Boolean>();
+
+    public final static boolean isValidationMode() {
+        return Boolean.TRUE.equals(VALIDATION.get());
+    }
+
+    public final static void setValidationMode(final boolean mode) {
+        if (mode) {
+            VALIDATION.set(mode);
+        } else {
+            VALIDATION.remove();
+        }
+    }
 
     protected String           iconKey;
-
     protected int              size;
-
     private boolean            visible = true;
-
     public static final String VISIBLE = "visible";
 
     public AppAction() {
         super();
+    }
 
+    protected void fireIconUpdate() {
+        firePropertyChange(Action.SMALL_ICON, null, new Object());
+        firePropertyChange(Action.LARGE_ICON_KEY, null, new Object());
+    }
+
+    protected void fireNameUpdate() {
+        firePropertyChange(Action.NAME, null, new Object());
+    }
+
+    protected void fireToolTipUpdate() {
+        firePropertyChange(Action.SHORT_DESCRIPTION, null, new Object());
     }
 
     /**
@@ -58,7 +80,6 @@ public abstract class AppAction extends BasicAction {
     public void setIconKey(String iconKey) {
         this.iconKey = iconKey;
         setIconSizes(18);
-
     }
 
     public String getIconKey() {
@@ -92,7 +113,6 @@ public abstract class AppAction extends BasicAction {
     public void addVisibilityPropertyChangeListener(final JComponent component) {
         final WeakReference<JComponent> weakComponent = new WeakReference<JComponent>(component);
         addPropertyChangeListener(new PropertyChangeListener() {
-
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
                 final JComponent component = weakComponent.get();
@@ -135,6 +155,5 @@ public abstract class AppAction extends BasicAction {
             }
         }
         return actionIcon;
-
     }
 }
