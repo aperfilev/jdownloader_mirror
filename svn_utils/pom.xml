@@ -10,6 +10,33 @@
   </parent>
   <artifactId>svn-utils</artifactId>
   <packaging>jar</packaging>
+  <dependencies>
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna</artifactId>
+      <version>5.13.0</version>
+    </dependency>
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna-platform</artifactId>
+      <version>5.13.0</version>
+    </dependency>
+    <dependency>
+      <groupId>net.miginfocom.layout</groupId>
+      <artifactId>miglayout-swing</artifactId>
+      <version>7.2</version>
+    </dependency>
+    <dependency>
+      <groupId>net.miginfocom.layout</groupId>
+      <artifactId>miglayout-core</artifactId>
+      <version>7.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm</artifactId>
+      <version>9.7</version>
+    </dependency>
+  </dependencies>
   <build>
     <sourceDirectory>src</sourceDirectory>
     <resources>
