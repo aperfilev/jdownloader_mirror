@@ -6,3 +6,19 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
+
+
+
+# Compiled class files and build outputs
+bin/
+build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# IDE-specific files
+.idea/
+*.iml

@@ -40,7 +40,7 @@ java -jar svn_trunk/target/svn-trunk-1.0-SNAPSHOT.jar
   2. Copy resource folders `ressourcen`, `translations`, `themes` into `src/main/resources` or configure additional resources.
   3. The project uses several non-standard source roots (`src-closed`, `translations`, `themes`). `build-helper-maven-plugin` is used for `svn_trunk`.
 
-* Java 1.6 is required for source/target compatibility. Modern JDKs may need `--release 6` flags or toolchain configuration.
+* Java 1.8 is now used for source/target compatibility. The code compiles with Java 8; original sources were Java 6 compatible.
 
 * The Eclipse `.classpath` references local projects `/JDBrowser`, `/MyJDownloaderClient`, `/AppWorkUtils`. These are mapped to the Maven modules above.
 
