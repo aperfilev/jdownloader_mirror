@@ -40,11 +40,15 @@
       <groupId>com.github.weisj</groupId>
       <artifactId>jsvg</artifactId>
       <version>1.0.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/libs/jsvg.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>com.kitfox.svg</groupId>
       <artifactId>svg-salamander</artifactId>
       <version>1.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/libs/svgSalamander.jar</systemPath>
     </dependency>
   </dependencies>
   <build>
@@ -57,5 +61,33 @@
         </excludes>
       </resource>
     </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+          <encoding>UTF-8</encoding>
+          <excludes>
+            <exclude>**/test/**</exclude>
+            <exclude>**/moncompare/test/**</exclude>
+            <exclude>**/utils/images/svg/WeisjJSVG*.java</exclude>
+            <exclude>**/utils/net/httpclient/Response.java</exclude>
+            <exclude>**/utils/net/httpconnection/CompositeTrustResult.java</exclude>
+            <exclude>**/utils/net/httpconnection/NativeSSLSocketStreamFactory.java</exclude>
+            <exclude>**/utils/net/httpconnection/trust/TrustAllProvider.java</exclude>
+            <exclude>**/utils/images/ProxyIcon.java</exclude>
+            <exclude>**/utils/zip/ZipUtils.java</exclude>
+            <exclude>**/jna/tests/TestJNAWIndowqsProcessHandler.java</exclude>
+            <exclude>**/jna/processes/JNAWindowsProcessHandler.java</exclude>
+            <exclude>**/processes/jna/JNAWindowsProcessHandler.java</exclude>
+            <exclude>**/utils/net/httpserver/HttpConnection.java</exclude>
+            <exclude>**/utils/net/httpserver/SSLConnectionWrapper.java</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 </project>

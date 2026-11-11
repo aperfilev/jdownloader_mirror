@@ -31,6 +31,104 @@
       <artifactId>svn-my-jdownloader-client</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk15on</artifactId>
+      <version>1.78</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/bcprov-jdk15on.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>1.78</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/bcpkix-jdk15on.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bctls-jdk15on</artifactId>
+      <version>1.78</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/bctls-jdk15on.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcutil-jdk15on</artifactId>
+      <version>1.78</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/bcutil-jdk15on.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>net.sf.sevenzipjbinding</groupId>
+      <artifactId>sevenzipjbinding</artifactId>
+      <version>9.20.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/sevenzipjbinding.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.seamless</groupId>
+      <artifactId>seamless-util</artifactId>
+      <version>1.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/UPNP/seamless-util.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.mozilla</groupId>
+      <artifactId>rhino</artifactId>
+      <version>1.7.14</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/js.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.tmatesoft.svnkit</groupId>
+      <artifactId>svnkit</artifactId>
+      <version>1.10.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/svnkit.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>com.btr.proxy</groupId>
+      <artifactId>proxy</artifactId>
+      <version>1.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/proxyVole.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.fourthline.cling</groupId>
+      <artifactId>cling-core</artifactId>
+      <version>2.0.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/UPNP/cling-core.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.fourthline.cling</groupId>
+      <artifactId>cling-support</artifactId>
+      <version>2.0.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/UPNP/cling-support.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>net.sf.image4j</groupId>
+      <artifactId>image4j</artifactId>
+      <version>1.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/image4j.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>net.lingala.zip4j</groupId>
+      <artifactId>zip4j</artifactId>
+      <version>1.3.2</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/zip4j.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>de.javasoft</groupId>
+      <artifactId>synthetica</artifactId>
+      <version>2.23</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/ressourcen/libs/laf/synthetica.jar</systemPath>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -64,6 +162,26 @@
           <source>1.8</source>
           <target>1.8</target>
           <encoding>UTF-8</encoding>
+          <failOnError>false</failOnError>
+          <excludes>
+            <exclude>**/extensions/**</exclude>
+            <exclude>**/plugins/components/antiDDoS*.java</exclude>
+            <exclude>**/scripting/**</exclude>
+            <exclude>**/captcha/**</exclude>
+            <exclude>**/*BCSSLSocketStreamFactory*</exclude>
+            <exclude>**/*SimpleFTP*</exclude>
+            <exclude>**/Plugin.java</exclude>
+            <exclude>**/SecondLevelLaunch.java</exclude>
+            <exclude>**/nutils/**</exclude>
+            <exclude>**/plugins/components/XFileSharingProBasic.java</exclude>
+            <exclude>**/controlling/reconnect/pluginsinc/upnp/cling/StreamClientImpl.java</exclude>
+            <exclude>**/plugins/download/DownloadLinkDownloadable.java</exclude>
+            <exclude>**/jd/plugins/hoster/**</exclude>
+            <exclude>**/jd/plugins/decrypter/**</exclude>
+            <exclude>**/jd/plugins/download/**</exclude>
+            <exclude>**/crosssystem/macos/**</exclude>
+            <exclude>**/gui/laf/**</exclude>
+          </excludes>
         </configuration>
       </plugin>
       <plugin>

@@ -1,5 +1,6 @@
 # SVN
 .svn/
+svn_trunk/dev/
 
 # Maven
 target/
